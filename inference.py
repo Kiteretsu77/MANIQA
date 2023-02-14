@@ -9,9 +9,9 @@ from config import Config
 from utils.inference_process import ToTensor, Normalize, five_point_crop, sort_file
 from data.pipal22_test import PIPAL22
 from tqdm import tqdm
+from glob import glob
 
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
 def setup_seed(seed):
@@ -49,37 +49,7 @@ def eval_epoch(config, net, test_loader):
         f.close()
 
 
-if __name__ == '__main__':
-    cpu_num = 1
-    os.environ['OMP_NUM_THREADS'] = str(cpu_num)
-    os.environ['OPENBLAS_NUM_THREADS'] = str(cpu_num)
-    os.environ['MKL_NUM_THREADS'] = str(cpu_num)
-    os.environ['VECLIB_MAXIMUM_THREADS'] = str(cpu_num)
-    os.environ['NUMEXPR_NUM_THREADS'] = str(cpu_num)
-    torch.set_num_threads(cpu_num)
-
-    setup_seed(20)
-
-    # config file
-    config = Config({
-        # dataset path
-        "db_name": "PIPAL",
-        "test_dis_path": "/mnt/data_16TB/ysd21/IQA/NTIRE2022_NR_Valid_Dis/",
-        
-        # optimization
-        "batch_size": 10,
-        "num_avg_val": 1,
-        "crop_size": 224,
-
-        # device
-        "num_workers": 8,
-
-        # load & save checkpoint
-        "valid": "./output/valid",
-        "valid_path": "./output/valid/inference_valid",
-        "model_path": "./output/models/model_maniqa/epoch1"
-    })
-
+def single_process(config):
     if not os.path.exists(config.valid):
         os.mkdir(config.valid)
 
@@ -101,7 +71,76 @@ if __name__ == '__main__':
     net = torch.load(config.model_path)
     net = net.cuda()
 
-    losses, scores = [], []
     eval_epoch(config, net, test_loader)
-    sort_file(config.valid_path + '/output.txt')
+
+    store_path = config.valid_path + '/output.txt'
+    mean = sort_file(store_path)
+
+    return mean
+
+
+
+
+def run(input_dir):
+    cpu_num = 1
+    os.environ['OMP_NUM_THREADS'] = str(cpu_num)
+    os.environ['OPENBLAS_NUM_THREADS'] = str(cpu_num)
+    os.environ['MKL_NUM_THREADS'] = str(cpu_num)
+    os.environ['VECLIB_MAXIMUM_THREADS'] = str(cpu_num)
+    os.environ['NUMEXPR_NUM_THREADS'] = str(cpu_num)
+    torch.set_num_threads(cpu_num)
+
+    setup_seed(20)
+
+
+
+    # config file
+    config = Config({
+        # dataset path
+        "db_name": "PIPAL",
+        "test_dis_path": input_dir,
+        
+        # optimization
+        "batch_size": 10,
+        "num_avg_val": 1,
+        "crop_size": 224,   # 这个后面调整一下
+
+        # device
+        "num_workers": 8,
+
+        # load & save checkpoint
+        "valid": "./output/valid",
+        "valid_path": "./output/valid/inference_valid",
+        "model_path": "ckpt_valid"
+    })
+
+
+    score = single_process(config)
+
+    return score
+
+    
+
+class video_scoring:
+    def __init__(self) -> None:
+        pass
+
+
+    def run(self, input_folders = None, verbose=False): 
+        print("This folder is ", input_folders)
+
+        test_folders = glob(input_folders, recursive = True) # Need to have "/*"
+
+        for input_dir in sorted(test_folders):
+            score = run(input_dir)
+            print(input_dir + " Average is " + str(score))
+            
+
+
+def main():
+    scoring = video_scoring()
+    scoring.run(input_folders = "/home/hikaridawn/Desktop/quality_proof_video/ESRGAN/V2/*", verbose = False)
+
+if __name__ == "__main__":
+    main()
     

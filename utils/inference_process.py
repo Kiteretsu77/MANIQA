@@ -10,10 +10,24 @@ def sort_file(file_path):
         line = line[:-1]
         ret.append(line)
     ret.sort()
+    
+    result = []
+    for values in ret:
+        name = values.split(',')[0]
+        value = float(values.split(',')[1])
+        
+        result.append((name, value))
+    result.sort(key=lambda x:int(x[0].split('.')[0][1:]))
 
+
+    sums = 0
     with open('./output.txt', 'w') as f:
-        for i in ret:
-            f.write(i + '\n')
+        for name, value in result:
+            sums += value
+            f.write(name + ' ' + str(value) + '\n')
+
+    mean = sums/len(result)
+    return mean
 
 
 def five_point_crop(idx, d_img, config):

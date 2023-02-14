@@ -5,3 +5,9 @@ Dis/
 *.zip
 
 output/
+
+ckpt_valid
+
+*.png
+
+*.txt
